@@ -1,0 +1,30 @@
+name: Tailscale-RDP
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1. Install & Hubungkan Tailscale
+      - name: Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}
+
+      # 2. Aktifkan RDP (Sama seperti sebelumnya)
+      - name: Enable RDP
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+          Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+
+      # 3. Jaga agar Workflow tetap berjalan (agar koneksi tidak putus)
+      - name: Keep Alive
+        run: |
+          Write-Host "Koneksi siap! Cek IP Runner di Dashboard Tailscale kamu."
+          Start-Sleep -Seconds 21600 # Menunggu selama 6 jam (maksimal limit GitHub)
