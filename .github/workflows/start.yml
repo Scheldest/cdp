@@ -1,4 +1,4 @@
-name: Tailscale-RDP
+name: Tailscale-Windows-RDP
 
 on: [push, workflow_dispatch]
 
@@ -6,16 +6,19 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # 1. Install & Hubungkan Tailscale
-      - name: Tailscale
-        uses: tailscale/github-action@v2
-        with:
-          authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}
-
-      # 2. Aktifkan RDP (Sama seperti sebelumnya)
+      - name: Download & Install Tailscale
+        run: |
+          # Download MSI installer
+          Invoke-WebRequest https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -OutFile tailscale-setup.exe
+          # Install secara silent
+          Start-Process -FilePath .\tailscale-setup.exe -ArgumentList "/quiet /norestart" -Wait
+          
+      - name: Connect to Tailscale
+        shell: pwsh
+        run: |
+          # Jalankan tailscale login menggunakan OAuth
+          & 'C:\Program Files\Tailscale\tailscale.exe' up --authkey "tskey-client-${{ secrets.TS_CLIENT_ID }}-${{ secrets.TS_CLIENT_SECRET }}?ephemeral=true"
+        
       - name: Enable RDP
         run: |
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
@@ -23,8 +26,10 @@ jobs:
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
           Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
-      # 3. Jaga agar Workflow tetap berjalan (agar koneksi tidak putus)
       - name: Keep Alive
         run: |
-          Write-Host "Koneksi siap! Cek IP Runner di Dashboard Tailscale kamu."
-          Start-Sleep -Seconds 21600 # Menunggu selama 6 jam (maksimal limit GitHub)
+          $ip = & 'C:\Program Files\Tailscale\tailscale.exe' ip -4
+          Write-Host "Koneksi Berhasil!"
+          Write-Host "IP Tailscale kamu: $ip"
+          Write-Host "Gunakan IP di atas untuk RDP."
+          Start-Sleep -Seconds 21600
