@@ -1,4 +1,4 @@
-name: Tailscale-Windows-RDP
+name: Tailscale-RDP-AuthKey
 
 on: [push, workflow_dispatch]
 
@@ -6,30 +6,31 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Download & Install Tailscale
+      - name: Install Tailscale
         run: |
-          # Download MSI installer
           Invoke-WebRequest https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -OutFile tailscale-setup.exe
-          # Install secara silent
           Start-Process -FilePath .\tailscale-setup.exe -ArgumentList "/quiet /norestart" -Wait
-          
-      - name: Connect to Tailscale
+
+      - name: Connect Tailscale
         shell: pwsh
         run: |
-          # Jalankan tailscale login menggunakan OAuth
-          & 'C:\Program Files\Tailscale\tailscale.exe' up --authkey "tskey-client-${{ secrets.TS_CLIENT_ID }}-${{ secrets.TS_CLIENT_SECRET }}?ephemeral=true"
-        
-      - name: Enable RDP
+          # Menjalankan Tailscale dengan Auth Key
+          & 'C:\Program Files\Tailscale\tailscale.exe' up --authkey ${{ secrets.TS_AUTH_KEY }}
+          
+          # Ambil IP Tailscale untuk mempermudah kamu
+          $tsIp = & 'C:\Program Files\Tailscale\tailscale.exe' ip -4
+          Write-Host "==========================================" -ForegroundColor Green
+          Write-Host "KONEKSI BERHASIL!" -ForegroundColor Green
+          Write-Host "IP RDP ANDA: $tsIp" -ForegroundColor Cyan
+          Write-Host "User: runneradmin | Pass: P@ssw0rd!" -ForegroundColor Yellow
+          Write-Host "==========================================" -ForegroundColor Green
+
+      - name: Setup Windows RDP
         run: |
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
           Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
-      - name: Keep Alive
-        run: |
-          $ip = & 'C:\Program Files\Tailscale\tailscale.exe' ip -4
-          Write-Host "Koneksi Berhasil!"
-          Write-Host "IP Tailscale kamu: $ip"
-          Write-Host "Gunakan IP di atas untuk RDP."
-          Start-Sleep -Seconds 21600
+      - name: Keep Alive (6 Jam)
+        run: Start-Sleep -Seconds 21600
