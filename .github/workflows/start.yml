@@ -1,36 +1,49 @@
-name: Tailscale-RDP-AuthKey
+name: Ubuntu-KDE-Tailscale
 
 on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
-      - name: Install Tailscale
-        run: |
-          Invoke-WebRequest https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -OutFile tailscale-setup.exe
-          Start-Process -FilePath .\tailscale-setup.exe -ArgumentList "/quiet /norestart" -Wait
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Connect Tailscale
-        shell: pwsh
+      # 1. Install Tailscale menggunakan Official Action (Di Linux ini lancar!)
+      - name: Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTH_KEY }}
+
+      # 2. Update & Install KDE Plasma + XRDP
+      - name: Install KDE and XRDP
         run: |
-          # Menjalankan Tailscale dengan Auth Key
-          & 'C:\Program Files\Tailscale\tailscale.exe' up --authkey ${{ secrets.TS_AUTH_KEY }}
+          sudo apt-get update
+          # Menggunakan DEBIAN_FRONTEND=noninteractive agar tidak muncul popup saat install
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y kde-standard xrdp
           
-          # Ambil IP Tailscale untuk mempermudah kamu
-          $tsIp = & 'C:\Program Files\Tailscale\tailscale.exe' ip -4
-          Write-Host "==========================================" -ForegroundColor Green
-          Write-Host "KONEKSI BERHASIL!" -ForegroundColor Green
-          Write-Host "IP RDP ANDA: $tsIp" -ForegroundColor Cyan
-          Write-Host "User: runneradmin | Pass: P@ssw0rd!" -ForegroundColor Yellow
-          Write-Host "==========================================" -ForegroundColor Green
+          # Konfigurasi XRDP agar menggunakan KDE (Plasma)
+          echo "startplasma-x11" > ~/.xsession
+          sudo systemctl enable xrdp
+          sudo systemctl restart xrdp
 
-      - name: Setup Windows RDP
+      # 3. Setup User untuk Login
+      - name: Setup User
         run: |
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-          Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+          # Username default github runner adalah 'runner'
+          # Kita set password agar bisa login via RDP
+          echo "runner:P@ssw0rd!" | sudo chpasswd
+          sudo adduser runner sudo
 
-      - name: Keep Alive (6 Jam)
-        run: Start-Sleep -Seconds 21600
+      # 4. Tampilkan IP Tailscale dan Jaga agar tetap hidup
+      - name: Connection Info
+        run: |
+          TS_IP=$(tailscale ip -4)
+          echo "============================================"
+          echo "Koneksi Tailscale Berhasil!"
+          echo "IP Ubuntu kamu: $TS_IP"
+          echo "Username: runner"
+          echo "Password: P@ssw0rd!"
+          echo "============================================"
+          # Jaga runner tetap hidup selama 6 jam
+          sleep 21600
