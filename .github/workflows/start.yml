@@ -20,7 +20,7 @@ jobs:
         run: |
           sudo apt-get update
           # Menggunakan DEBIAN_FRONTEND=noninteractive agar tidak muncul popup saat install
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y kde-standard xrdp
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y kubuntu-desktop xrdp
           
           # Konfigurasi XRDP agar menggunakan KDE (Plasma)
           echo "startplasma-x11" > ~/.xsession
