@@ -22,7 +22,7 @@ jobs:
           Write-Host "==========================================" -ForegroundColor Green
           Write-Host "KONEKSI BERHASIL!" -ForegroundColor Green
           Write-Host "IP RDP ANDA: $tsIp" -ForegroundColor Cyan
-          Write-Host "User: bondex | Pass: bondex" -ForegroundColor Yellow
+          Write-Host "User: runneradmin | Pass: P@ssw0rd!" -ForegroundColor Yellow
           Write-Host "==========================================" -ForegroundColor Green
 
       - name: Setup Windows RDP
@@ -30,7 +30,7 @@ jobs:
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-          Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "bondex" -Force)
+          Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
       - name: Keep Alive (6 Jam)
         run: Start-Sleep -Seconds 21600
