@@ -4,7 +4,7 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: windows-10
+    runs-on: windows-latest
     steps:
       - name: Install Tailscale
         run: |
